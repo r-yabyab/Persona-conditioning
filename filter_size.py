@@ -1,5 +1,6 @@
 import json
 import jsonlines
+from itertools import islice
 
 data = []
 
@@ -7,14 +8,14 @@ def main():
     pass
 
 def filter_size_small():
-    # print("hi")
-    # with open("./data/data.jsonl", encoding="utf-8") as f:
-    #     # content = f.read()
-    #     data.append(f.read())
-    #     print(data)
     with jsonlines.open("./data/data_copy.jsonl", "r") as f:
-        for i, obj in enumerate(f):
-            print(obj, i)
+        for i, line in enumerate(islice(f, 1, 201), start=1):
+            prompt = line["conversations"][0]["content"]
+            print(prompt, f"- (index = {i})")
+            print("Word count -", word_count(prompt))
+
+def word_count(x):
+    return len(list(x))
     
 
 filter_size_small()
