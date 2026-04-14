@@ -1,8 +1,7 @@
-import json
 import jsonlines
 from itertools import islice
 
-data = []
+# data = []
 
 def main():
     pass
@@ -15,15 +14,37 @@ def filter_size_small():
             print(prompt, f"- (index = {i})")
             print("Word count -", word_count(prompt))
             if word_count(prompt) > 100:
-                writer.write(line)
-
-
-    # with open("filtered.jsonl", "x") as f:
+                writer.write({
+                    "prompt": [
+                        {"Word count": word_count(prompt), "content": prompt},
+                        # {"person": "response", "content": ""}
+                    ]
+                })
         
-        
+        data = []
+            
+        with jsonlines.open("./data/filtered.jsonl", "r") as content:
+            for line in content:
+                data.append(line)
+
+        for i in range(len(data)):
+            # word_count_first = data[i]["prompt"][0]["Word count"]
+            for j in range(i+1, len(data)):
+                # word_count_second = data[j]["prompt"][0]["Word count"]
+                if (data[i]["prompt"][0]["Word count"] > data[j]["prompt"][0]["Word count"]):
+                    temp = data[i]
+                    data[i] = data[j]
+                    data[j] = temp
+
+        # for x in data:
+        #     print(x["prompt"][0]["Word count"])
+        #     print(x)
+
+        with jsonlines.open("./data/filtered_sort_asc.jsonl", "w") as writer:
+            for x in data:
+                writer.write(x)
 
 def word_count(x):
     return len(list(x))
     
-
 filter_size_small()
