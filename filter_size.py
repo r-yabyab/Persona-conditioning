@@ -1,8 +1,6 @@
 import jsonlines
 from itertools import islice
 
-# data = []
-
 def main():
     pass
 
@@ -35,10 +33,6 @@ def filter_size_small():
                     temp = data[i]
                     data[i] = data[j]
                     data[j] = temp
-
-        # for x in data:
-        #     print(x["prompt"][0]["Word count"])
-        #     print(x)
 
         with jsonlines.open("./data/filtered_sort_asc.jsonl", "w") as writer:
             for x in data:
