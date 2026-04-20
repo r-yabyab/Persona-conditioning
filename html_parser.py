@@ -1,3 +1,11 @@
+"""
+Reads files
+
+Todo:
+- read line by line
+- append if multiple comments per person
+"""
+
 import os
 import json
 
