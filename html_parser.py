@@ -35,7 +35,7 @@ def main():
     user_message = ""
     print(len(os.listdir(root)))
     with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
-        open("./data/pairs.jsonl", "a", encoding="utf-8") as writer:
+        open("./data/pairs.jsonl", "w", encoding="utf-8") as writer:
         soup = BeautifulSoup(reader, "html.parser")
         messages  = soup.select(message_selector)
         # for message in messages:
