@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
+import jsonlines
 
 root = "./data/localex/msg/dms"
 message_selector = "span.chatlog__markdown-preserve" #span
@@ -102,6 +103,21 @@ def main():
                     # print(person_two)
                     #person_one.clear()
                     user_message = ""
-            
 
-main()
+def raw_text():
+    with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
+    jsonlines.open("./data/rawtext.jsonl", "w") as writer:
+        soup = BeautifulSoup(reader, "html.parser")
+        messages  = soup.select(message_selector)
+        conversation_length = len(messages)
+        start = 0
+        end = conversation_length -1
+
+        for i in range(start, end):
+            parent = messages[i].find_parent("div", class_=message_author)
+            author = parent.select_one("span", class_="chatlog__author").get_text()
+            writer.write(messages[i].get_text())
+            print(messages[i].get_text())
+        
+# main()
+raw_text()
