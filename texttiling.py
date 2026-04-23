@@ -25,12 +25,28 @@ def main():
     tt = TextTilingTokenizer()
     segments = tt.tokenize(data)
 
+    vectorizer = TfidfVectorizer(stop_words="english")
+    tfidf = vectorizer.fit_transform(segments)
+    features = vectorizer.get_feature_names_out()
+
+    def top_words(row, n=4):
+        scores = tfidf[row].toarray().flatten()
+        top_idx = scores.argsort()[::-1][:n]
+        return [features[i] for i in top_idx if scores[i] > 0]
+
     with jsonlines.open("./data/rawtext_texttiling.jsonl", "w") as writer:
-        for seg in segments:
-            print("--------------------------------")
-            print("--------------------------------")
-            print(seg)
-            writer.write(seg)
+        for i, seg in enumerate(segments):
+            writer.write({
+                "topics": top_words(i),
+                "segment": seg,
+            })
+            
+        # with jsonlines.open("./data/rawtext_texttiling.jsonl", "w") as writer:
+        #     for seg in segments:
+        #         print("--------------------------------")
+        #         print("--------------------------------")
+        #         print(seg)
+        #         writer.write(seg)
 
 
 main()
