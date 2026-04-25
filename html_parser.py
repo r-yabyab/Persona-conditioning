@@ -1,5 +1,5 @@
 """
-Reads files
+Pulls conversation from .html and formats into jsonl
 
 Todo:
 - read line by line
@@ -18,9 +18,8 @@ import jsonlines
 root = "./data/localex/msg/dms"
 message_selector = "span.chatlog__markdown-preserve" #span
 short_timestamp = "chatlog__short-timestamp" #div
-sample = "380890688247693314_short.html"
-# message_author = "div.chatlog__message-primary>div>span.chatlog__message-primary"
-# message_author = "chatlog__message-primary"
+# sample = "380890688247693314_short.html"
+sample = "380890688247693314.html"
 message_author = "chatlog__message-group"
     # from message_selector... parent, parent --> message author
 
@@ -116,8 +115,18 @@ def raw_text():
         for i in range(start, end):
             parent = messages[i].find_parent("div", class_=message_author)
             author = parent.select_one("span", class_="chatlog__author").get_text()
-            writer.write(messages[i].get_text())
+            writer.write({
+                "message": messages[i].get_text(),
+                "author": author
+            }
+                )
             print(messages[i].get_text())
+            
+        # for i in range(start, end):
+        #     parent = messages[i].find_parent("div", class_=message_author)
+        #     author = parent.select_one("span", class_="chatlog__author").get_text()
+        #     writer.write(messages[i].get_text())
+        #     print(messages[i].get_text())
         
-# main()
-raw_text()
+main()
+# raw_text()
