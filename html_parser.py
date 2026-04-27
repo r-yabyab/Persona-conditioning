@@ -1,9 +1,9 @@
 """
-Pulls conversation from .html and formats into jsonl
+Pulls conversation from .html, appends consecutive messages into new line into one message into person 1,
+repeat for person 2 and write as a json into a jsonl file
 
-Todo:
-- read line by line
-- append if multiple comments per person
+TODO:
+incorporate time for topic detection
 """
 
 
@@ -14,6 +14,7 @@ from datetime import datetime
 from sentence_transformers import SentenceTransformer
 from sentence_transformers.util import cos_sim
 import jsonlines
+from transformers import BertTokenizer
 
 root = "./data/localex/msg/dms"
 message_selector = "span.chatlog__markdown-preserve" #span
@@ -24,7 +25,7 @@ message_author = "chatlog__message-group"
     # from message_selector... parent, parent --> message author
 
 
-
+# puts into pairs.jsonl
 def main():
 
     # yes, no, hi (maybe keep hi)
@@ -50,6 +51,7 @@ def main():
         person_one = { "name": None, "content": ""}
         person_two = { "name": "net", "content": ""}
         counter = 0
+
 
         for i in range(start, end):
             # user_message = ""
@@ -102,7 +104,65 @@ def main():
                     # print(person_two)
                     #person_one.clear()
                     user_message = ""
+                    
+def group_text():
+    
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
+    # text = "your text here"
+    # tokens = tokenizer.tokenize(text)
+    # print(len(tokens))
+
+    MIN_FIRST_MESSAGE_LEN = 3
+    message_list = []
+    conversation_list = []
+    running_tokens = 0
+
+    user_message = ""
+    # print(len(os.listdir(root)))
+    with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
+        open("./data/pairs_plain.jsonl", "w", encoding="utf-8") as writer:
+        soup = BeautifulSoup(reader, "html.parser")
+        messages  = soup.select(message_selector)
+        conversation_length = len(messages)
+        start = 0
+        end = conversation_length -1
+
+        for i in range(start, end):
+            # user_message = ""
+            next_message = messages[i+1].find_parent("div", class_=message_author)
+            parent = messages[i].find_parent("div", class_=message_author)
+            author = parent.select_one("span", class_="chatlog__author").get_text()
+            next_author = next_message.select_one("span", class_="chatlog__author").get_text()
+            timestamp = parent.select_one(".chatlog__timestamp")["title"]
+            dt = datetime.strptime(timestamp, "%A, %B %d, %Y %H:%M")
+            
+            if author == next_author:
+                user_message += messages[i].get_text() + "\n"
+            else:
+                user_message += messages[i].get_text()
+
+                msg_tokens = len(tokenizer.encode(user_message, add_special_tokens=False, truncation=True, max_length=510))
+
+                if running_tokens + msg_tokens >= 300:
+                    # store current conversation
+                    conversation_list.append(message_list)
+
+                    # start new one
+                    message_list = [user_message]
+                    running_tokens = msg_tokens
+                else:
+                    message_list.append(user_message)
+                    running_tokens += msg_tokens
+
+                user_message = ""
+
+        # add last conversation if not empty
+        if message_list:
+            conversation_list.append(message_list)
+
+        writer.write(json.dumps(conversation_list, ensure_ascii=False))
+# extracts tag text into 1 line each
 def raw_text():
     with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
     jsonlines.open("./data/rawtext.jsonl", "w") as writer:
@@ -128,5 +188,6 @@ def raw_text():
         #     writer.write(messages[i].get_text())
         #     print(messages[i].get_text())
         
-main()
+# main()
 # raw_text()
+group_text()
