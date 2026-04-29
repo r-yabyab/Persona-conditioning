@@ -23,7 +23,18 @@ def main():
             print(point)
             conversation_turns = len(point["messages"])
             print(conversation_turns)
-            if conversation_turns <= 3:
+            if conversation_turns <= 6:
                 writer.write(point)
-            
+                
+def readlines():
+    with jsonlines.open(input_segments, "r") as reader:
+        for i,point in enumerate(reader):
+            if i>1317:
+                break
+            conversations = point["messages"]
+            if len(conversations) <= 6:
+                print(conversations)
+                print(len(conversations))
+
 main()
+# readlines()
