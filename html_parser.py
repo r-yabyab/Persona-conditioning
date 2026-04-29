@@ -106,6 +106,7 @@ def main():
                     user_message = ""
                     
 def group_text():
+    # puts into pairs_plan.json
     
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
@@ -162,6 +163,39 @@ def group_text():
             conversation_list.append(message_list)
 
         writer.write(json.dumps(conversation_list, ensure_ascii=False))
+
+def group_text_jsonl():
+    user_message = ""
+    with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
+        open("./data/pairs_grouped.jsonl", "w", encoding="utf-8") as writer:
+        soup = BeautifulSoup(reader, "html.parser")
+        messages = soup.select(message_selector)
+        conversation_length = len(messages)
+        start = 0
+        end = conversation_length - 1
+        current_author = None
+
+        for i in range(start, end):
+            next_message = messages[i + 1].find_parent("div", class_=message_author)
+            parent = messages[i].find_parent("div", class_=message_author)
+            author = parent.select_one("span", class_="chatlog__author").get_text()
+            next_author = next_message.select_one("span", class_="chatlog__author").get_text()
+            current_author = author
+
+            if author == next_author:
+                user_message += messages[i].get_text() + "\n"
+            else:
+                user_message += messages[i].get_text()
+                writer.write(json.dumps({"author": author, "content": user_message}, ensure_ascii=False) + "\n")
+                user_message = ""
+                current_author = None
+
+        # flush last message
+        if user_message and current_author:
+            writer.write(json.dumps({"author": current_author, "content": user_message}, ensure_ascii=False) + "\n")
+
+        print("finished")
+
 # extracts tag text into 1 line each
 def raw_text():
     with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
@@ -190,4 +224,5 @@ def raw_text():
         
 # main()
 # raw_text()
-group_text()
+# group_text()
+group_text_jsonl()
