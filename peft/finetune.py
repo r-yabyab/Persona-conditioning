@@ -53,7 +53,15 @@ tokenizer = get_chat_template(
 
 def formatting_prompts_func(examples):
     convos = examples["conversations"]
-    texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
+    
+    # texts = [tokenizer.apply_chat_template(convo, tokenize = False, add_generation_prompt = False) for convo in convos]
+    
+    
+    texts = [tokenizer.apply_chat_template(
+        [msg for pair in convo for msg in pair],
+        tokenize = False, add_generation_prompt = False
+    ) for convo in convos]
+    
     return { "text" : texts, }
 pass
 

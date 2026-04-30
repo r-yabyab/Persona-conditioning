@@ -25,11 +25,12 @@ def main():
     with jsonlines.open(input_data, "r") as reader, \
         jsonlines.open(output, "w") as writer:
         for point in reader:
-            conversation = [
+            messages = [
                 {"role": ROLE_MAP.get(msg["role"], msg["role"]), "content": msg["content"]}
                 for msg in point["messages"]
             ]
-            writer.write({"conversations": conversation})
+            pairs = [messages[i:i+2] for i in range(0, len(messages) - 1, 2)]
+            writer.write({"conversations": pairs})
 
 
 main()
