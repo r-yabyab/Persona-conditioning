@@ -7,7 +7,8 @@ from transformers import TextStreamer
 import json
 import os
 
-max_seq_length = 512 # Choose any! We auto support RoPE Scaling internally!
+# max_seq_length = 512 # Choose any! We auto support RoPE Scaling internally!
+max_seq_length = 2048 # Choose any! We auto support RoPE Scaling internally!
 dtype = None # None for auto detection. Float16 for Tesla T4, V100, Bfloat16 for Ampere+
 load_in_4bit = True # Use 4bit quantization to reduce memory usage. Can be False.
 
@@ -29,8 +30,10 @@ tokenizer = get_chat_template(
 )
 
 # Configuration
-max_new_tokens = 200
+max_new_tokens = 300
 text_streamer = TextStreamer(tokenizer, skip_prompt = True)
+history = []
+max_history = 8
 
 # Print model info once
 config_path = f"{MODEL_PATH}/adapter_config.json"
@@ -62,11 +65,18 @@ while True:
         if not user_input:
             continue
         
+        # add user message to history
+        history.append({"role": "user", "content": user_input})
+        history = history[-max_history:]
+
+        # use full conversation history
+        messages = history
+        
         # Create fresh message for each prompt (no history)
-        messages = [{
-            "role": "user",
-            "content": user_input
-        }]
+        # messages = [{
+        #     "role": "user",
+        #     "content": user_input
+        # }]
         
         # Process the input
         inputs = tokenizer.apply_chat_template(
@@ -80,20 +90,37 @@ while True:
         print("Assistant: ", end="")
         
         # Generate response
-        _ = model.generate(
-            input_ids = inputs,
-            attention_mask = attention_mask,
-            streamer = text_streamer,
-            # temperature = 0.1,
-            temperature = 0.8,
-            top_p = 0.95,
-            top_k = 64,
-            max_new_tokens = max_new_tokens,
-            # repetition_penalty = 1.3,
-            use_cache = True
-        )
+        # _ = model.generate(
+        #     input_ids = inputs,
+        #     attention_mask = attention_mask,
+        #     streamer = text_streamer,
+        #     # temperature = 0.1,
+        #     temperature = 0.8,
+        #     top_p = 0.95,
+        #     top_k = 64,
+        #     max_new_tokens = max_new_tokens,
+        #     # repetition_penalty = 1.3,
+        #     use_cache = True
+        # )
         
-        print("\n" + "-"*50 + "\n")  # Separator between conversations
+        # print("\n" + "-"*50 + "\n")  # Separator between conversations
+        
+        outputs = model.generate(
+            input_ids=inputs,
+            attention_mask=attention_mask,
+            temperature=0.8,
+            top_p=0.95,
+            top_k=64,
+            max_new_tokens=max_new_tokens,
+            # repetition_penalty=1.3,
+            use_cache=True
+        )
+
+        response = tokenizer.decode(outputs[0][inputs.shape[-1]:], skip_special_tokens=True)
+        print("Assistant:", response)
+        
+        history.append({"role": "assistant", "content": response})
+        history = history[-max_history:]
         
     except KeyboardInterrupt:
         print("\nGoodbye!")
