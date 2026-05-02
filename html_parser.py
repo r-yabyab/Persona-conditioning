@@ -11,10 +11,10 @@ import os
 import json
 from bs4 import BeautifulSoup
 from datetime import datetime
-from sentence_transformers import SentenceTransformer
-from sentence_transformers.util import cos_sim
+# from sentence_transformers import SentenceTransformer
+# from sentence_transformers.util import cos_sim
 import jsonlines
-from transformers import BertTokenizer
+# from transformers import BertTokenizer
 
 root = "./data/localex/msg/dms"
 message_selector = "span.chatlog__markdown-preserve" #span
@@ -164,7 +164,57 @@ def group_text():
 
         writer.write(json.dumps(conversation_list, ensure_ascii=False))
 
-def group_text_jsonl():
+def scan_messages():
+    files = os.listdir(f"{root}")
+    with open("logs/empty_log.txt", "w", encoding="utf-8") as log_writer, \
+        open("logs/small_files_log.txt", "w", encoding="utf-8") as size_log_writer:
+        for file in files:
+            with open(f"{root}/{file}", "r", encoding="utf-8") as reader:
+                soup = BeautifulSoup(reader, "html.parser")
+                messages  = soup.select(message_selector)
+                if not messages:
+                    print(f"skipping {file}")
+                    log_writer.write(f"{file}" + "\n")
+                elif len(messages) < 10:
+                    print(f"small file: {file}")
+                    size_log_writer.write(str(file) + "\n")
+                else:
+                    print(len(messages))
+                    group_text_jsonl(root, file)
+
+def group_text_jsonl(root, sample):
+    user_message = ""
+    with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
+        open(f"./data/transformed/{sample}-pairs_grouped.jsonl", "w", encoding="utf-8") as writer:
+        soup = BeautifulSoup(reader, "html.parser")
+        messages = soup.select(message_selector)
+        conversation_length = len(messages)
+        start = 0
+        end = conversation_length - 1
+        current_author = None
+
+        for i in range(start, end):
+            next_message = messages[i + 1].find_parent("div", class_=message_author)
+            parent = messages[i].find_parent("div", class_=message_author)
+            author = parent.select_one("span", class_="chatlog__author").get_text()
+            next_author = next_message.select_one("span", class_="chatlog__author").get_text()
+            current_author = author
+
+            if author == next_author:
+                user_message += messages[i].get_text() + "\n"
+            else:
+                user_message += messages[i].get_text()
+                writer.write(json.dumps({"author": author, "content": user_message}, ensure_ascii=False) + "\n")
+                user_message = ""
+                current_author = None
+
+        # flush last message
+        if user_message and current_author:
+            writer.write(json.dumps({"author": current_author, "content": user_message}, ensure_ascii=False) + "\n")
+
+        print("finished")
+        
+def group_text_jsonl_single():
     user_message = ""
     with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
         open("./data/pairs_grouped.jsonl", "w", encoding="utf-8") as writer:
@@ -225,4 +275,5 @@ def raw_text():
 # main()
 # raw_text()
 # group_text()
-group_text_jsonl()
+# group_text_jsonl_single() #this one works
+scan_messages()
