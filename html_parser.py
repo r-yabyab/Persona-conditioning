@@ -11,10 +11,10 @@ import os
 import json
 from bs4 import BeautifulSoup
 from datetime import datetime
-# from sentence_transformers import SentenceTransformer
-# from sentence_transformers.util import cos_sim
+from sentence_transformers import SentenceTransformer
+from sentence_transformers.util import cos_sim
 import jsonlines
-# from transformers import BertTokenizer
+from transformers import BertTokenizer
 
 root = "./data/localex/msg/dms"
 message_selector = "span.chatlog__markdown-preserve" #span
@@ -105,7 +105,7 @@ def main():
                     #person_one.clear()
                     user_message = ""
                     
-def group_text():
+def group_text_single():
     # puts into pairs_plan.json
     
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
@@ -168,10 +168,12 @@ def scan_messages():
     files = os.listdir(f"{root}")
     with open("logs/empty_log.txt", "w", encoding="utf-8") as log_writer, \
         open("logs/small_files_log.txt", "w", encoding="utf-8") as size_log_writer:
-        for file in files:
+        for i, file in enumerate(files):
             with open(f"{root}/{file}", "r", encoding="utf-8") as reader:
                 soup = BeautifulSoup(reader, "html.parser")
                 messages  = soup.select(message_selector)
+                if i <= 1:
+                    print(f"skipping {file}")
                 if not messages:
                     print(f"skipping {file}")
                     log_writer.write(f"{file}" + "\n")
@@ -180,7 +182,61 @@ def scan_messages():
                     size_log_writer.write(str(file) + "\n")
                 else:
                     print(len(messages))
-                    group_text_jsonl(root, file)
+                    # group_text_jsonl(root, file)
+                    group_text(root, file)
+                    
+def group_text(root, sample):
+    # puts into pairs_plain.json
+    
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+
+    message_list = []
+    conversation_list = []
+    running_tokens = 0
+
+    user_message = ""
+    with open(f"{root}/{sample}", "r", encoding="utf-8") as reader, \
+        open(f"./data/transformed/plain/{sample}-pairs_plain.jsonl", "w", encoding="utf-8") as writer:
+        soup = BeautifulSoup(reader, "html.parser")
+        messages  = soup.select(message_selector)
+        conversation_length = len(messages)
+        start = 0
+        end = conversation_length -1
+
+        for i in range(start, end):
+            # user_message = ""
+            next_message = messages[i+1].find_parent("div", class_=message_author)
+            parent = messages[i].find_parent("div", class_=message_author)
+            author = parent.select_one("span", class_="chatlog__author").get_text()
+            next_author = next_message.select_one("span", class_="chatlog__author").get_text()
+            timestamp = parent.select_one(".chatlog__timestamp")["title"]
+            dt = datetime.strptime(timestamp, "%A, %B %d, %Y %H:%M")
+            
+            if author == next_author:
+                user_message += messages[i].get_text() + "\n"
+            else:
+                user_message += messages[i].get_text()
+
+                msg_tokens = len(tokenizer.encode(user_message, add_special_tokens=False, truncation=True, max_length=510))
+
+                if running_tokens + msg_tokens >= 300:
+                    # store current conversation
+                    conversation_list.append(message_list)
+
+                    # start new one
+                    message_list = [user_message]
+                    running_tokens = msg_tokens
+                else:
+                    message_list.append(user_message)
+                    running_tokens += msg_tokens
+
+                user_message = ""
+
+        # add last conversation if not empty
+        if message_list:
+            conversation_list.append(message_list)
+
+        writer.write(json.dumps(conversation_list, ensure_ascii=False))
 
 def group_text_jsonl(root, sample):
     user_message = ""
@@ -274,6 +330,6 @@ def raw_text():
         
 # main()
 # raw_text()
-# group_text()
+# group_text_single() # this one works for text-segmentation
 # group_text_jsonl_single() #this one works
 scan_messages()
